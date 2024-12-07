@@ -1,0 +1,151 @@
+local Player = game:GetService('Players').LocalPlayer
+local Mouse = Player:GetMouse()
+local UserInputService = game:GetService('UserInputService')
+local RunService = game:GetService('RunService')
+
+local Bindings = {}
+local FirstBindings = {}
+local ForceBindings = {}
+local FlightEnabled = false
+local FlightSpeed = 50
+local MaxFlightSpeed = 1500
+
+local Directions = {
+Forward = false,
+Backward = false,
+Left = false,
+Right = false,
+Up = false,
+Down = false
+}
+
+function bind(key, callback)
+Bindings[key] = callback
+end
+
+function bind_first(key, callback)
+FirstBindings[key] = callback
+end
+
+function forcebind(key, callback)
+ForceBindings[key] = callback
+end
+
+function unbind(key)
+Bindings[key] = nil
+FirstBindings[key] = nil
+end
+
+-- Bind input events
+UserInputService.InputBegan:Connect(function(input)
+local focusedTextBox = UserInputService:GetFocusedTextBox()
+local key = input.KeyCode.Name:lower()
+
+if not focusedTextBox and FirstBindings[key] and typeof(FirstBindings[key]) == 'function' then
+FirstBindings[key]()
+end
+
+if input.UserInputType == Enum.UserInputType.Keyboard then
+if key == 'w' then Directions.Forward = true end
+if key == 's' then Directions.Backward = true end
+if key == 'a' then Directions.Left = true end
+if key == 'd' then Directions.Right = true end
+if key == 'q' then Directions.Up = true end
+if key == 'e' then Directions.Down = true end
+end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+local focusedTextBox = UserInputService:GetFocusedTextBox()
+local key = input.KeyCode.Name:lower()
+
+if not focusedTextBox then
+if Bindings[key] and typeof(Bindings[key]) == 'function' and input.UserInputType.Name == 'Keyboard' then
+Bindings[key]()
+end
+
+if input.UserInputType.Name == 'MouseButton1' and Bindings.mouse1 then
+Bindings.mouse1()
+end
+
+if input.UserInputType.Name == 'MouseButton2' and Bindings.mouse2 then
+Bindings.mouse2()
+end
+elseif ForceBindings[key] and typeof(ForceBindings[key]) == 'function' then
+ForceBindings[key]()
+end
+if input.UserInputType == Enum.UserInputType.Keyboard then
+if key == 'w' then Directions.Forward = false end
+if key == 's' then Directions.Backward = false end
+if key == 'a' then Directions.Left = false end
+if key == 'd' then Directions.Right = false end
+if key == 'q' then Directions.Up = false end
+if key == 'e' then Directions.Down = false end
+end
+end)
+
+-- Flight feature
+bind('p', function()
+FlightEnabled = not FlightEnabled
+if FlightEnabled then
+StartFlying()
+else
+StopFlying()
+end
+end)
+
+bind('z', function()
+FlightSpeed = FlightSpeed + 25 > MaxFlightSpeed and MaxFlightSpeed or FlightSpeed + 25
+end)
+
+bind('x', function()
+FlightSpeed = FlightSpeed - 25 < 0 and 0 or FlightSpeed - 25
+end)
+
+function StartFlying()
+local Character = Player.Character
+local RootPart = Character:FindFirstChild('HumanoidRootPart')
+RunService.RenderStepped:Connect(function()
+if FlightEnabled and Character and RootPart then
+local direction = Vector3.new(0, 0, 0)
+if Directions.Forward then
+direction = direction + (workspace.CurrentCamera.CFrame.LookVector)
+end
+if Directions.Backward then
+direction = direction - (workspace.CurrentCamera.CFrame.LookVector)
+end
+if Directions.Left then
+direction = direction - (workspace.CurrentCamera.CFrame.RightVector)
+end
+if Directions.Right then
+direction = direction + (workspace.CurrentCamera.CFrame.RightVector)
+end
+if Directions.Up then
+direction = direction + Vector3.new(0, 1, 0)
+end
+if Directions.Down then
+direction = direction - Vector3.new(0, 1, 0)
+end
+
+local velocity = direction.unit * (math.random((FlightSpeed - 1) * 1000, (FlightSpeed + 2.5) * 1000) / 1000)
+RootPart.Velocity = velocity
+end
+end)
+end
+
+function StopFlying()
+local Character = Player.Character
+local RootPart = Character:FindFirstChild('HumanoidRootPart')
+if RootPart then
+RootPart.Velocity = Vector3.new(0, 0, 0)
+end
+for k in pairs(Directions) do
+Directions[k] = false
+end
+end
+
+-- Setup global functions
+getgenv().bind = bind
+getgenv().bind_first = bind_first
+getgenv().forcebind = forcebind
+getgenv().unbind = unbind
