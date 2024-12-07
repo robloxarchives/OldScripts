@@ -1,0 +1,100 @@
+local Player = game:GetService('Players').LocalPlayer
+local Mouse = Player:GetMouse()
+local UserInputService = game:GetService('UserInputService')
+local RunService = game:GetService('RunService')
+
+local Bindings = {}
+local FirstBindings = {}
+local ForceBindings = {}
+
+function bind(key, callback)
+    Bindings[key] = callback
+end
+
+function bind_first(key, callback)
+    FirstBindings[key] = callback
+end
+
+function forcebind(key, callback)
+    ForceBindings[key] = callback
+end
+
+function unbind(key)
+    Bindings[key] = nil
+    FirstBindings[key] = nil
+end
+
+local FlightEnabled = false
+local FlightSpeed = 50
+local MaxFlightSpeed = 1500
+
+-- Bind input events
+UserInputService.InputBegan:Connect(function(input)
+    local focusedTextBox = UserInputService:GetFocusedTextBox()
+    local key = input.KeyCode.Name:lower()
+
+    if not focusedTextBox and FirstBindings[key] and typeof(FirstBindings[key]) == 'function' then
+        FirstBindings[key]()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    local focusedTextBox = UserInputService:GetFocusedTextBox()
+    local key = input.KeyCode.Name:lower()
+
+    if not focusedTextBox then
+        if Bindings[key] and typeof(Bindings[key]) == 'function' and input.UserInputType.Name == 'Keyboard' then
+            Bindings[key]()
+        end
+
+        if input.UserInputType.Name == 'MouseButton1' and Bindings.mouse1 then
+            Bindings.mouse1()
+        end
+
+        if input.UserInputType.Name == 'MouseButton2' and Bindings.mouse2 then
+            Bindings.mouse2()
+        end
+    elseif ForceBindings[key] and typeof(ForceBindings[key]) == 'function' then
+        ForceBindings[key]()
+    end
+end)
+
+-- Flight feature
+bind('f', function()
+    FlightEnabled = not FlightEnabled
+    if FlightEnabled then
+        StartFlying()
+    else
+        StopFlying()
+    end
+end)
+
+bind('z', function()
+    FlightSpeed = FlightSpeed + 25 > MaxFlightSpeed and MaxFlightSpeed or FlightSpeed + 25
+end)
+
+bind('x', function()
+    FlightSpeed = FlightSpeed - 25 < 0 and 0 or FlightSpeed - 25
+end)
+
+function StartFlying()
+    local Character = Player.Character
+    local RootPart = Character:FindFirstChild('HumanoidRootPart')
+    RunService.RenderStepped:Connect(function()
+        if FlightEnabled then
+            RootPart.Velocity = Vector3.new(0, FlightSpeed, 0)
+        end
+    end)
+end
+
+function StopFlying()
+    local Character = Player.Character
+    local RootPart = Character:FindFirstChild('HumanoidRootPart')
+    RootPart.Velocity = Vector3.new(0, 0, 0)
+end
+
+-- Setup global functions
+getgenv().bind = bind
+getgenv().bind_first = bind_first
+getgenv().forcebind = forcebind
+getgenv().unbind = unbind
